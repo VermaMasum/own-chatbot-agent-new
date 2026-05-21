@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String   @default("")
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Bot {
+  id        String   @id @default(uuid())
+  status    String   @default("published")
+  profile   Json
+  source    String   @default("local-db")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CrawlRun {
+  id         String   @id @default(uuid())
+  websiteUrl String   @default("")
+  title      String   @default("")
+  summary    String   @default("")
+  pages      Json     @default("[]")
+  sections   Json     @default("[]")
+  chunks     Json     @default("[]")
+  topics     Json     @default("[]")
+  source     String   @default("crawl")
+  createdAt  DateTime @default(now())
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  botId          String   @default("")
+  sessionId      String   @default("")
+  userMessage    String   @default("")
+  assistantReply String   @default("")
+  provider       String   @default("")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+}
+
+model Lead {
+  id        String   @id @default(uuid())
+  botId     String   @default("")
+  sessionId String   @default("")
+  name      String?
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+}

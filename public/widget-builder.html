@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Widget Builder — BotForge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { overflow: hidden; }
+
+    /* ── Shell ── */
+    .wb-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Header bar ── */
+    .wb-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 18px;
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .wb-logo-link {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+
+    .wb-breadcrumb { color: var(--text-muted); font-size: 0.82rem; }
+    .wb-page-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+    .wb-hgap { flex: 1; }
+
+    .wb-global-field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .wb-global-label {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .wb-color-swatch {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      border: 1px solid var(--border-strong);
+      cursor: pointer;
+      padding: 2px;
+      background: transparent;
+    }
+
+    .wb-bot-id-input {
+      width: 170px;
+      padding: 5px 9px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--text);
+      font: 0.78rem/1 "SFMono-Regular", Consolas, monospace;
+    }
+
+    .wb-bot-id-input:focus { outline: none; border-color: var(--primary); }
+
+    .wb-hbtn {
+      padding: 6px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text);
+      font: 600 0.78rem/1 inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .wb-hbtn:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+    .wb-sep { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
+
+    /* ── Workspace ── */
+    .wb-workspace {
+      display: grid;
+      grid-template-columns: 228px 1fr 268px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Palette ── */
+    .wb-palette {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 14px 10px 20px;
+    }
+
+    .wb-sec-label {
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: var(--text-muted);
+      margin: 0 4px 8px;
+    }
+
+    .wb-palette-block {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      margin-bottom: 6px;
+      cursor: grab;
+      transition: border-color .15s, background .15s, transform .12s;
+      user-select: none;
+      position: relative;
+    }
+
+    .wb-palette-block:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      transform: translateX(3px);
+    }
+
+    .wb-palette-block:active { cursor: grabbing; transform: scale(0.97); }
+
+    .wb-palette-block.pb-used {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .pb-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .pb-info { flex: 1; min-width: 0; }
+    .pb-name { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+    .pb-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .pb-badge {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .pb-badge-done { background: #dcfce7; color: #15803d; }
+    .pb-badge-req  { background: #fef3c7; color: #92400e; }
+
+    .wb-tips {
+      margin-top: 18px;
+      padding: 10px 10px;
+      background: rgba(79,70,229,.05);
+      border: 1px solid rgba(79,70,229,.1);
+      border-radius: var(--radius);
+    }
+
+    .wb-tips p {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* ── Canvas wrap ── */
+    .wb-canvas-wrap {
+      background: #dde6f8;
+      background-image: radial-gradient(circle, rgba(79,70,229,.12) 1px, transparent 1px);
+      background-size: 20px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 40px;
+    }
+
+    .wb-canvas-lbl {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: #7c8dbf;
+      margin-bottom: 16px;
+      align-self: flex-start;
+    }
+
+    /* Widget frame */
+    .wb-widget-frame {
+      width: 360px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 16px 56px rgba(79,70,229,.2), 0 4px 16px rgba(0,0,0,.08);
+      overflow: hidden;
+      position: relative;
+      min-height: 80px;
+    }
+
+    /* Drop zones */
+    .wb-dz {
+      height: 4px;
+      transition: height .15s, background .15s;
+      position: relative;
+    }
+
+    .wb-dz.dz-active {
+      height: 40px;
+      background: rgba(79,70,229,.08);
+      border: 2px dashed var(--primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wb-dz.dz-active::after {
+      content: 'Drop block here';
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: .03em;
+    }
+
+    /* Canvas block wrapper */
+    .wb-cblock {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .wb-cblock:hover .wb-ctrls { opacity: 1; }
+    .wb-cblock.cb-selected { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+    .wb-ctrls {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      display: flex;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity .15s;
+      z-index: 20;
+    }
+
+    .wb-cbtn {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .12s;
+    }
+
+    .cb-drag {
+      background: rgba(255,255,255,.92);
+      color: #64748b;
+      cursor: grab;
+      box-shadow: 0 1px 4px rgba(0,0,0,.12);
+    }
+
+    .cb-del {
+      background: rgba(254,242,242,.95);
+      color: #ef4444;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+
+    .cb-del:hover { background: #ef4444; color: #fff; }
+
+    /* Canvas empty state */
+    .wb-empty {
+      padding: 40px 24px;
+      text-align: center;
+      border: 2px dashed rgba(79,70,229,.25);
+      border-radius: 16px;
+      color: #7c8dbf;
+      width: 360px;
+    }
+
+    .wb-empty svg { opacity: 0.35; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+    .wb-empty p { font-size: 0.82rem; line-height: 1.5; }
+
+    /* ── Block visuals ── */
+    .bv-header {
+      padding: 13px 14px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .bv-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.22);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .bv-hinfo { flex: 1; }
+    .bv-hname { font-weight: 700; font-size: 0.85rem; }
+    .bv-hstatus {
+      font-size: 0.68rem; opacity: 0.85;
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    .bv-hstatus::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #4ade80;
+      display: inline-block;
+    }
+
+    .bv-hclose { opacity: 0.6; }
+
+    .bv-welcome {
+      padding: 11px 13px;
+      background: #f8fafc;
+    }
+
+    .bv-wmsg { display: flex; align-items: flex-start; gap: 7px; }
+
+    .bv-msav {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700;
+      color: #fff;
+      flex-shrink: 0; margin-top: 2px;
+    }
+
+    .bv-bubble {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px 13px 13px 13px;
+      padding: 8px 11px;
+      font-size: 0.8rem;
+      color: #0f172a;
+      line-height: 1.42;
+      max-width: calc(100% - 36px);
+    }
+
+    .bv-qr {
+      padding: 8px 13px 11px;
+      background: #f8fafc;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .bv-qr-btn {
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 0.73rem;
+      font-weight: 600;
+      cursor: default;
+      border: 1.5px solid;
+      white-space: nowrap;
+    }
+
+    .bv-chatarea {
+      overflow: hidden;
+      padding: 11px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bv-bmsg { display: flex; align-items: flex-start; gap: 6px; }
+    .bv-umsg { display: flex; justify-content: flex-end; }
+
+    .bv-ububble {
+      padding: 7px 11px;
+      border-radius: 13px 4px 13px 13px;
+      font-size: 0.77rem;
+      color: #fff;
+      line-height: 1.4;
+    }
+
+    .bv-inputbar {
+      padding: 9px 11px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      background: #fff;
+    }
+
+    .bv-inputfield {
+      flex: 1;
+      height: 34px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 0 11px;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      background: #f8fafc;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .bv-sendbtn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: none;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      cursor: default;
+    }
+
+    .bv-poweredby {
+      padding: 7px 13px;
+      text-align: center;
+      font-size: 0.67rem;
+      color: #94a3b8;
+      background: #fff;
+    }
+
+    /* ── Properties panel ── */
+    .wb-props {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 14px 14px 20px;
+    }
+
+    .wp-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 220px;
+      text-align: center;
+      color: var(--text-muted);
+      gap: 8px;
+    }
+
+    .wp-empty svg { opacity: 0.28; }
+    .wp-empty p { font-size: 0.8rem; line-height: 1.5; }
+
+    .wp-blk-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: var(--primary);
+      margin-bottom: 14px;
+      padding: 4px 8px;
+      background: var(--primary-light);
+      border-radius: 6px;
+    }
+
+    .wp-field { margin-bottom: 13px; }
+    .wp-field:last-child { margin-bottom: 0; }
+
+    .wp-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 4px;
+    }
+
+    .wp-input {
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--text);
+      font: 0.82rem/1 inherit;
+      transition: border-color .15s;
+    }
+
+    .wp-input:focus { outline: none; border-color: var(--primary); }
+
+    .wp-textarea {
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--text);
+      font: 0.82rem/1.5 inherit;
+      resize: vertical;
+      min-height: 58px;
+    }
+
+    .wp-textarea:focus { outline: none; border-color: var(--primary); }
+
+    .wp-color-row {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .wp-cswatch {
+      width: 34px; height: 32px;
+      border-radius: 7px;
+      border: 1px solid var(--border-strong);
+      cursor: pointer;
+      padding: 2px;
+      flex-shrink: 0;
+    }
+
+    .wp-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .wp-toggle {
+      width: 34px; height: 18px;
+      border-radius: 9px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: background .18s;
+      flex-shrink: 0;
+      background: #cbd5e1;
+    }
+
+    .wp-toggle.t-on { background: var(--primary); }
+
+    .wp-toggle::after {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      top: 3px; left: 3px;
+      transition: left .18s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.18);
+    }
+
+    .wp-toggle.t-on::after { left: 19px; }
+
+    .wp-range-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .wp-range-val { color: var(--text-muted); font-weight: 400; }
+
+    .wp-range {
+      width: 100%;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    .wp-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 13px 0;
+    }
+
+    /* QR tags */
+    .qr-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 7px;
+    }
+
+    .qr-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      max-width: 100%;
+    }
+
+    .qr-tag span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 120px;
+    }
+
+    .qr-rm {
+      border: none;
+      background: none;
+      color: var(--primary);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      font-size: 0.68rem;
+      flex-shrink: 0;
+    }
+
+    .qr-add-row { display: flex; gap: 6px; }
+
+    .qr-add-input {
+      flex: 1;
+      padding: 6px 9px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      font: 0.8rem/1 inherit;
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .qr-add-input:focus { outline: none; border-color: var(--primary); }
+
+    .qr-add-btn {
+      padding: 6px 11px;
+      border-radius: 7px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font: 600 0.78rem/1 inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* ── Export bar ── */
+    .wb-export {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      flex-shrink: 0;
+    }
+
+    .wb-export-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .wb-export-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .wb-etabs {
+      display: flex;
+      gap: 3px;
+      background: var(--bg);
+      padding: 3px;
+      border-radius: 7px;
+      flex-shrink: 0;
+    }
+
+    .wb-etab {
+      padding: 4px 11px;
+      border: none;
+      border-radius: 5px;
+      background: none;
+      color: var(--text-muted);
+      font: 600 0.75rem/1 inherit;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .wb-etab.et-active {
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .wb-ecode {
+      flex: 1;
+      font: 0.73rem/1.5 "SFMono-Regular", Consolas, monospace;
+      background: #0f172a;
+      color: #94a3b8;
+      border-radius: 7px;
+      padding: 7px 11px;
+      border: none;
+      outline: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: text;
+    }
+
+    .wb-copybtn {
+      padding: 7px 14px;
+      border: none;
+      border-radius: 7px;
+      background: var(--primary);
+      color: #fff;
+      font: 600 0.78rem/1 inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .15s, background .15s;
+      flex-shrink: 0;
+    }
+
+    .wb-copybtn:hover { opacity: 0.9; }
+    .wb-copybtn.wc-copied { background: var(--success); }
+
+    /* ── Dragging state ── */
+    .wb-palette-block.pb-dragging { opacity: 0.5; }
+    .wb-cblock.cb-dragging { opacity: 0.45; }
+  </style>
+</head>
+<body>
+  <div class="wb-shell">
+
+    <!-- ── Top header ── -->
+    <header class="wb-header">
+      <a href="/" class="wb-logo-link">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+          <path d="M13 2L4.5 13.5H11L10 22L19.5 10H13L13 2Z" fill="#4f46e5" stroke="#4f46e5" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+        BotForge
+      </a>
+      <span class="wb-breadcrumb">/</span>
+      <span class="wb-page-title">Widget Builder</span>
+
+      <div class="wb-hgap"></div>
+
+      <div class="wb-global-field">
+        <span class="wb-global-label">Primary color</span>
+        <input type="color" class="wb-color-swatch" id="globalColor" value="#4f46e5" title="Widget primary color" />
+      </div>
+
+      <div class="wb-sep"></div>
+
+      <div class="wb-global-field">
+        <span class="wb-global-label">Bot ID</span>
+        <input type="text" class="wb-bot-id-input" id="globalBotId" placeholder="paste-your-bot-id" spellcheck="false" />
+      </div>
+
+      <div class="wb-sep"></div>
+
+      <button class="wb-hbtn" id="resetBtn" title="Reset to defaults">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.5 15A9 9 0 1 0 5.5 5.5L1 10"/></svg>
+        Reset
+      </button>
+    </header>
+
+    <!-- ── Workspace ── -->
+    <div class="wb-workspace">
+
+      <!-- Left: palette -->
+      <aside class="wb-palette">
+        <div class="wb-sec-label">Blocks</div>
+        <div id="paletteList"></div>
+
+        <div class="wb-tips">
+          <p>Drag blocks onto the canvas to build your widget. Click a block to edit its properties in the panel on the right.</p>
+        </div>
+      </aside>
+
+      <!-- Center: canvas -->
+      <main class="wb-canvas-wrap">
+        <div class="wb-canvas-lbl">Live Preview</div>
+        <div class="wb-widget-frame" id="widgetCanvas"></div>
+      </main>
+
+      <!-- Right: properties -->
+      <aside class="wb-props" id="propsPanel">
+        <div class="wp-empty">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          <p>Click a block to<br>edit its properties</p>
+        </div>
+      </aside>
+
+    </div>
+
+    <!-- ── Export bar ── -->
+    <div class="wb-export">
+      <div class="wb-export-inner">
+        <span class="wb-export-label">Embed as</span>
+        <div class="wb-etabs">
+          <button class="wb-etab et-active" data-tab="script">Script</button>
+          <button class="wb-etab" data-tab="iframe">iFrame</button>
+        </div>
+        <input class="wb-ecode" id="exportCode" readonly value="" spellcheck="false" />
+        <button class="wb-copybtn" id="exportCopyBtn">Copy</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="/widget-builder.js"></script>
+</body>
+</html>

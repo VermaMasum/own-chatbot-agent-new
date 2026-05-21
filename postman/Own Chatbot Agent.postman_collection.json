@@ -1,0 +1,219 @@
+{
+  "info": {
+    "_postman_id": "7e1d2c7c-2a0a-4b62-9b7b-3d1e4d5b9b11",
+    "name": "Own Chatbot Agent",
+    "description": "All APIs for the Own Chatbot Agent backend. Import this + the Environment file, select the 'Own Chatbot Agent - Local' environment, then run Login first to auto-save the token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) {",
+                  "  pm.environment.set('token', res.token);",
+                  "  pm.environment.set('userId', res.user?.id || '');",
+                  "  console.log('Signed up as:', res.user?.email);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"newuser@test.com\",\n  \"password\": \"test123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Register a new user. Token is auto-saved to environment variable 'token'. Change the email to a new one each time."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) {",
+                  "  pm.environment.set('token', res.token);",
+                  "  pm.environment.set('userId', res.user?.id || '');",
+                  "  console.log('Logged in as:', res.user?.email);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test123@test.com\",\n  \"password\": \"test123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with existing account. email: test123@test.com / password: test123 already exists. Token is auto-saved to the 'token' environment variable."
+          }
+        },
+        {
+          "name": "Get Current User (me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Returns the currently logged-in user. Run Login first to get the token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bots",
+      "item": [
+        {
+          "name": "Get Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/templates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "templates"]
+            },
+            "description": "Returns all available business type templates (real_estate, saas, clinic, etc)."
+          }
+        },
+        {
+          "name": "Build Chatbot Profile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"saas\",\n  \"projectName\": \"My Test Bot\",\n  \"websiteUrl\": \"\",\n  \"manualKnowledge\": \"We are a SaaS company. Pricing starts at $29/month for the Starter plan, $79/month for Pro. We offer a 14-day free trial. Contact us at support@example.com.\",\n  \"mainGoal\": \"answer product questions and collect leads\",\n  \"targetAudience\": \"website visitors\",\n  \"tone\": \"friendly and professional\",\n  \"capturesName\": \"yes\",\n  \"capturesEmail\": \"yes\",\n  \"capturesPhone\": \"no\",\n  \"allowedTopics\": \"pricing, features, onboarding, support\",\n  \"blockedTopics\": \"legal advice, medical diagnosis\",\n  \"handoffReason\": \"when the bot is uncertain or the user requests a human\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/build",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "build"]
+            },
+            "description": "Builds a chatbot profile from inputs. Leave websiteUrl empty to skip scraping and use manualKnowledge only. This does NOT store to DB — call Publish after this."
+          }
+        },
+        {
+          "name": "Publish Chatbot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) {",
+                  "  pm.environment.set('botId', res.id);",
+                  "  console.log('Bot published, ID:', res.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile\": {\n    \"projectName\": \"My Test Bot\",\n    \"businessType\": \"SaaS\",\n    \"websiteUrl\": \"\",\n    \"manualKnowledge\": \"We are a SaaS company. Pricing starts at $29/month. 14-day free trial available.\",\n    \"websiteTitle\": \"\",\n    \"websiteSummary\": \"\",\n    \"websitePages\": [],\n    \"websiteSections\": [],\n    \"websiteChunks\": [],\n    \"websiteTopics\": [],\n    \"tone\": \"friendly and professional\",\n    \"goals\": [\"answer product questions\", \"qualify leads\"],\n    \"targetAudience\": \"website visitors\",\n    \"knowledgeSources\": [\"Manual knowledge: We are a SaaS company. Pricing starts at $29/month.\"],\n    \"leadCaptureFields\": [\"name\", \"email\"],\n    \"handoffConditions\": [\"The bot is uncertain.\", \"User requests a human.\"],\n    \"allowedTopics\": [\"pricing\", \"features\", \"support\"],\n    \"blockedTopics\": [\"legal advice\", \"medical diagnosis\"],\n    \"prompt\": \"You are the AI chatbot for My Test Bot. Business type: SaaS. Tone: friendly and professional.\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "publish"]
+            },
+            "description": "Saves the bot to the database (data/app-db.json). The botId is auto-saved to environment."
+          }
+        },
+        {
+          "name": "List All Bots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bots",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bots"]
+            },
+            "description": "Returns all published bots from the database."
+          }
+        },
+        {
+          "name": "Get Bot by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bots/{{botId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bots", "{{botId}}"]
+            },
+            "description": "Get a single bot by ID. Run Publish first to auto-save botId to environment."
+          }
+        },
+        {
+          "name": "Chat With Bot",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"botId\": \"{{botId}}\",\n  \"message\": \"What is your pricing?\",\n  \"conversation\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat"]
+            },
+            "description": "Send a message to a published bot. The exchange is saved to messages in the database. Run Publish first."
+          }
+        },
+        {
+          "name": "Get Embed Script",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/embed/{{botId}}.js",
+              "host": ["{{baseUrl}}"],
+              "path": ["embed", "{{botId}}.js"]
+            },
+            "description": "Returns the JavaScript embed snippet to paste into any website."
+          }
+        }
+      ]
+    }
+  ]
+}

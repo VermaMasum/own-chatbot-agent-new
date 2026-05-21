@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Embed Test Page</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.08); padding: 48px 40px; max-width: 560px; width: 100%; text-align: center; }
+    h1 { font-size: 1.6rem; font-weight: 800; color: #1e293b; margin-bottom: 10px; }
+    p  { color: #64748b; font-size: .95rem; line-height: 1.6; margin-bottom: 24px; }
+    .badge { display: inline-block; background: #ede9fe; color: #6d28d9; font-size: .78rem; font-weight: 600; padding: 4px 12px; border-radius: 99px; margin-bottom: 20px; }
+    .hint { margin-top: 32px; padding: 14px 18px; background: #f8fafc; border-radius: 10px; font-size: .82rem; color: #64748b; text-align: left; border: 1px solid #e2e8f0; }
+    .hint code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: .8rem; color: #334155; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">Embed Test</div>
+    <h1>Hello, World!</h1>
+    <p>This page is testing the chatbot embed widget. You should see a chat button in the bottom-right corner of the screen. Click it to open the chatbot.</p>
+    <p>This page lives at <strong>http://localhost:3000/test-embed.html</strong></p>
+    <div class="hint">
+      To embed on <em>any</em> website, paste this tag before <code>&lt;/body&gt;</code>:<br><br>
+      <code id="snippetBox">Loading...</code>
+    </div>
+  </div>
+
+  <script>
+    // Show the embed snippet in the hint box
+    const tag = document.querySelector('script[data-bot-id]');
+    if (tag) {
+      document.getElementById('snippetBox').textContent =
+        '<script src="' + tag.src + '" data-bot-id="' + tag.dataset.botId + '" async><\/script>';
+    }
+  </script>
+
+  <!-- ↓ Replace the bot ID below with your published bot's ID -->
+  <script
+    src="/embed/b995ac15-ede2-4552-876f-065aa6dab2ad.js"
+    data-bot-id="b995ac15-ede2-4552-876f-065aa6dab2ad"
+    data-label="Chat with us"
+    data-color="#4f46e5"
+    data-position="bottom-right"
+    async
+  ></script>
+</body>
+</html>
