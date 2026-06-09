@@ -3,6 +3,7 @@ services:
     name: own-chatbot-agent
     env: node
     plan: free
+    rootDir: .
     buildCommand: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install && npx prisma generate
     startCommand: node src/index.js
     envVars:
