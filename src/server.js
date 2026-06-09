@@ -101,7 +101,7 @@ export async function handler(req, res) {
     if (req.method === "POST" && url.pathname === "/api/build") {
       const body = await readJsonBody(req);
       const empty = { title: "", summary: "", pages: [], sections: [], chunks: [], topics: [] };
-      const puppeteerDisabled = process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD === "true";
+      const puppeteerDisabled = process.env.DISABLE_PUPPETEER === "true";
 
       let websiteContext = null;
 
@@ -1352,6 +1352,117 @@ function hasMeaningfulScrapedContext(ctx) {
   return goodChunks.length >= 2 || goodSections.length >= 2;
 }
 
+// ── Firecrawl scraper ─────────────────────────────────────────────────────────
+async function fetchViaFirecrawl(websiteUrl) {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return null;
+
+  const urlStr = websiteUrl.toString();
+  console.log(`[firecrawl] Crawling: ${urlStr}`);
+
+  try {
+    // Use /crawl to discover and scrape all pages (handles SPAs + tabs)
+    const crawlRes = await fetch("https://api.firecrawl.dev/v1/crawl", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: urlStr,
+        limit: 10,
+        scrapeOptions: { formats: ["markdown"] },
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!crawlRes.ok) {
+      console.log(`[firecrawl] Crawl start failed: ${crawlRes.status}`);
+      return null;
+    }
+
+    const { id: jobId } = await crawlRes.json();
+    if (!jobId) return null;
+    console.log(`[firecrawl] Crawl job: ${jobId}`);
+
+    // Poll for results (max 25 seconds)
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 2500));
+      const pollRes = await fetch(`https://api.firecrawl.dev/v1/crawl/${jobId}`, {
+        headers: { "Authorization": `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!pollRes.ok) continue;
+      const pollData = await pollRes.json();
+      if (pollData.status === "completed" || (pollData.data?.length > 0 && pollData.status === "scraping")) {
+        const pages = (pollData.data || []).filter(p => p.markdown?.length > 80);
+        if (pages.length === 0) return null;
+        console.log(`[firecrawl] Got ${pages.length} pages`);
+        return pages;
+      }
+    }
+    console.log(`[firecrawl] Timed out waiting for job`);
+    return null;
+  } catch (err) {
+    console.log(`[firecrawl] Error: ${err.message}`);
+    return null;
+  }
+}
+
+function firecrawlPagesToContext(pages, websiteUrl) {
+  const urlStr = websiteUrl.toString();
+  const allSections = [];
+  const allChunks = [];
+  const contextPages = [];
+
+  for (const page of pages) {
+    const url = page.metadata?.url || page.metadata?.sourceURL || urlStr;
+    const title = page.metadata?.title || "";
+    const md = page.markdown || "";
+
+    // Parse sections from markdown headings
+    const headingRe = /^#{1,3}\s+(.+)$/gm;
+    const indices = [];
+    for (const m of md.matchAll(headingRe)) indices.push({ heading: m[1].trim(), index: m.index });
+
+    for (let i = 0; i < indices.length; i++) {
+      const start = indices[i].index;
+      const end = i + 1 < indices.length ? indices[i + 1].index : md.length;
+      const text = md.slice(start, end)
+        .replace(/^#{1,3}\s+.+\n?/, "")
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/[*_`>]/g, "")
+        .trim();
+      if (text.length > 30) {
+        allSections.push({ title: indices[i].heading, text: text.slice(0, 2000), url, kind: "section" });
+      }
+    }
+
+    // Paragraph chunks
+    const cleanMd = md.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`#>]/g, "").replace(/\n{3,}/g, "\n\n");
+    const paragraphs = cleanMd.split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 40);
+    for (const p of paragraphs.slice(0, 20)) {
+      allChunks.push({ url, title: title || url, text: p.slice(0, 1200) });
+    }
+
+    contextPages.push({ url, title, summary: page.metadata?.description || cleanMd.slice(0, 300) });
+  }
+
+  const homePage = pages[0];
+  const homeText = (homePage.markdown || "").replace(/[*_`#>\[\]()]/g, "").replace(/\n+/g, " ").trim();
+  const summary = homeText.slice(0, 1500);
+  const title = homePage.metadata?.title || new URL(urlStr).hostname;
+
+  return {
+    title,
+    summary,
+    pages: contextPages,
+    sections: allSections.slice(0, 80),
+    chunks: allChunks.slice(0, 60),
+    topics: extractTopicsFromText(summary + " " + allSections.map(s => s.text).join(" ")),
+  };
+}
+
 async function getSimpleWebsiteContext(websiteUrl) {
   const empty = { title: "", summary: "", pages: [], sections: [], chunks: [], topics: [] };
   const normalizedUrl = normalizeWebsiteUrl(websiteUrl);
@@ -1359,7 +1470,16 @@ async function getSimpleWebsiteContext(websiteUrl) {
 
   const urlStr = normalizedUrl.toString();
 
-  // ── Step 1: Fetch homepage via Jina ──
+  // ── Step 1: Try Firecrawl (handles SPAs + tabs, best quality) ──
+  if (process.env.FIRECRAWL_API_KEY) {
+    const fcPages = await fetchViaFirecrawl(normalizedUrl);
+    if (fcPages && fcPages.length > 0) {
+      return firecrawlPagesToContext(fcPages, normalizedUrl);
+    }
+    console.log(`[scrape] Firecrawl returned nothing — falling back to Jina`);
+  }
+
+  // ── Step 2: Fetch homepage via Jina ──
   let homepage = await fetchViaJina(urlStr);
   if (!homepage) {
     try { homepage = await fetchStaticPage(urlStr); } catch { homepage = null; }
@@ -1438,11 +1558,13 @@ async function fetchViaJina(url) {
     console.log(`[jina] Fetching: ${jinaUrl}`);
     const res = await fetch(jinaUrl, {
       headers: {
-        "Accept":          "text/plain",
-        "X-Return-Format": "text",
-        "X-No-Cache":      "true",
+        "Accept":           "text/plain",
+        "X-Return-Format":  "markdown",
+        "X-No-Cache":       "true",
+        "X-Wait-For-Selector": "body",
+        "X-Timeout":        "20",
       },
-      signal: AbortSignal.timeout(22000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!res.ok) {
       console.log(`[jina] HTTP ${res.status} for ${url}`);
@@ -1914,7 +2036,7 @@ async function openPuppeteerBrowser() {
   try {
     return await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
     });
   } catch {
     return null;
