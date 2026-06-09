@@ -37,7 +37,7 @@ const websiteContextCache = new Map();
 
 const port = Number(process.env.PORT || 3000);
 
-const server = http.createServer(async (req, res) => {
+export async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   // CORS Headers
@@ -212,11 +212,14 @@ const server = http.createServer(async (req, res) => {
   } catch (error) {
     return sendJson(res, 500, { error: error.message || "Server error" });
   }
-});
+}
 
-server.listen(port, () => {
-  console.log(`Own Chatbot Agent UI running at http://localhost:${port}`);
-});
+if (!process.env.VERCEL) {
+  const server = http.createServer(handler);
+  server.listen(port, () => {
+    console.log(`Own Chatbot Agent UI running at http://localhost:${port}`);
+  });
+}
 
 async function serveStatic(pathname, res) {
   const safePath = pathname === "/" ? "/index.html" : pathname;
