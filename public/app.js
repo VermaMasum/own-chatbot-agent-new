@@ -525,6 +525,32 @@ async function generateProfile() {
     addMessage("bot", welcome);
     conversation = [{ role: "assistant", content: welcome }];
 
+    // Show scrape quality warning if needed
+    const scrapeQuality = data._scrapeQuality;
+    const hasManualContent = (payload.manualKnowledge || "").trim().length > 0;
+    const existingWarning = document.getElementById("scrapeWarning");
+    if (existingWarning) existingWarning.remove();
+
+    if (payload.websiteUrl && !hasManualContent && (scrapeQuality === "partial" || scrapeQuality === "failed")) {
+      const warning = document.createElement("div");
+      warning.id = "scrapeWarning";
+      warning.style.cssText = "background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:.82rem;color:#92400e;line-height:1.5;";
+      warning.innerHTML = scrapeQuality === "failed"
+        ? `⚠️ <strong>Couldn't read your website</strong> — it's likely a JavaScript SPA (React/Vue/Angular) whose content only loads in a browser. For accurate answers, paste your content (about, services, FAQs, etc.) in the <strong>Knowledge Base</strong> field above and regenerate.`
+        : `⚠️ <strong>Website partially read</strong> — some content may be missing (tabs, dynamic sections). For best results, paste your full content in the <strong>Knowledge Base</strong> field above and regenerate.`;
+
+      const knowledgeField = document.getElementById("manualKnowledge");
+      if (knowledgeField) {
+        knowledgeField.closest(".field-group").insertAdjacentElement("afterend", warning);
+        knowledgeField.scrollIntoView({ behavior: "smooth", block: "center" });
+        knowledgeField.style.border = "1.5px solid #f59e0b";
+      }
+    } else {
+      // Reset textarea border if previously highlighted
+      const kb = document.getElementById("manualKnowledge");
+      if (kb) kb.style.border = "";
+    }
+
     syncQuickActions(payload.businessType);
     renderPublishPrompt();
     scrollChatToBottom();

@@ -137,6 +137,14 @@ export async function handler(req, res) {
         topics: websiteContext.topics || [],
         source: isValidWebsiteContext(websiteContext) ? "crawl" : "fallback",
       });
+      const scrapeQuality = !body.websiteUrl
+        ? "none"
+        : hasMeaningfulScrapedContext(websiteContext)
+          ? "good"
+          : (websiteContext.title || websiteContext.summary)
+            ? "partial"
+            : "failed";
+
       const profile = buildChatbotProfile({
         ...body,
         websiteTitle: websiteContext.title,
@@ -146,7 +154,7 @@ export async function handler(req, res) {
         websiteChunks: websiteContext.chunks,
         websiteTopics: websiteContext.topics,
       });
-      return sendJson(res, 200, profile);
+      return sendJson(res, 200, { ...profile, _scrapeQuality: scrapeQuality });
     }
 
     if (req.method === "POST" && url.pathname === "/api/publish") {
